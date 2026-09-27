@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<title>Promise</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+body{min-height:100vh}.app{max-width:620px;margin:auto;padding:28px 18px 40px}
+.logo{width:74px;height:74px;border-radius:22px;background:#fff;color:#000;display:flex;align-items:center;justify-content:center;font-size:49px;font-weight:800;margin:12px auto 25px}
+h1{text-align:center;font-size:31px;margin:0 0 6px;letter-spacing:-.7px}.sub{text-align:center;color:#8e8e93;font-size:14px;margin-bottom:28px}
+.card{background:#0b0b0b;border:1px solid #242424;border-radius:20px;padding:18px;margin:14px 0}
+.label{font-size:13px;color:#aaa;margin-bottom:10px}.big{font-size:20px;font-weight:700;line-height:1.35}
+textarea,input{width:100%;border:1px solid #2d2d2d;background:#050505;color:#fff;border-radius:13px;padding:13px;font:inherit;outline:none}
+textarea:focus,input:focus{border-color:#777}button{border:0;border-radius:13px;padding:13px 16px;font-weight:750;font-size:14px;cursor:pointer}
+.primary{background:#fff;color:#000;width:100%}.secondary{background:#1c1c1c;color:#fff}.danger{background:#fff;color:#000}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+.item{padding:12px 0;border-bottom:1px solid #222;display:flex;gap:10px;align-items:center}.item:last-child{border-bottom:0}
+.item button{margin-left:auto;padding:9px 11px}.empty{color:#666;font-size:14px}
+#pause{display:none;position:fixed;inset:0;background:#000;z-index:20;padding:22px}.pausebox{max-width:560px;margin:12vh auto}.pausebox h2{font-size:34px;margin:0 0 15px}.promise{font-size:22px;line-height:1.4;font-weight:700;margin:20px 0}.timer{text-align:center;font-size:52px;font-weight:800;margin:20px}
+.small{font-size:12px;color:#666;text-align:center;margin-top:30px}
+.toast{position:fixed;left:18px;right:18px;bottom:20px;background:#fff;color:#000;padding:14px;border-radius:14px;text-align:center;font-weight:700;display:none}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="logo">P</div>
+<h1>Promise</h1>
+<div class="sub">The promise you make tonight. The reminder you need tomorrow.</div>
+
+<div class="card">
+<div class="label">TONIGHT'S PROMISE</div>
+<textarea id="promise" rows="4" placeholder="Tomorrow I will..."></textarea>
+<br><br><button class="primary" onclick="savePromise()">Save Promise</button>
+</div>
+
+<div class="card">
+<div class="label">YOUR PROMISE</div>
+<div id="saved" class="big">No promise saved yet.</div>
+</div>
+
+<div class="card">
+<div class="label">WHEN TEMPTATION HITS</div>
+<div id="temptations"></div>
+<br>
+<div class="row">
+<input id="custom" placeholder="Add a temptation">
+<button class="secondary" onclick="addTemptation()">Add</button>
+</div>
+</div>
+
+<div class="card">
+<div class="label">MORNING REMINDER</div>
+<div class="row">
+<input id="time" type="time" value="07:00">
+<button class="secondary" onclick="enableReminder()">Enable</button>
+</div>
+<div id="status" class="empty" style="margin-top:9px"></div>
+</div>
+
+<div class="small">Promise does not control you. It reminds you of the decision you already made.</div>
+</div>
+
+<div id="pause">
+<div class="pausebox">
+<div class="label">PROMISE</div>
+<h2>Pause.</h2>
+<div id="temptationText" class="empty"></div>
+<div class="promise" id="promiseText"></div>
+<div class="timer" id="timer">30</div>
+<p class="empty">Wait 30 seconds. Then decide. You can choose to continue, but make the decision consciously.</p>
+<button class="primary" onclick="better()">I choose my promise</button>
+<br><br><button class="secondary" style="width:100%" onclick="closePause()">Close</button>
+</div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const KEY="promise_app_v1";
+let d=JSON.parse(localStorage.getItem(KEY)||'{"promise":"","temptations":["🥤 Cold drink","🍔 Junk food","📱 Endless scrolling"],"time":"07:00"}');
+let interval=null;
+
+function save(){localStorage.setItem(KEY,JSON.stringify(d));render()}
+function render(){
+ document.getElementById("promise").value=d.promise;
+ document.getElementById("time").value=d.time||"07:00";
+ document.getElementById("saved").textContent=d.promise||"No promise saved yet.";
+ document.getElementById("temptations").innerHTML=d.temptations.map((x,i)=>
+ `<div class="item"><span>${esc(x)}</span><button class="secondary" onclick="urge(${i})">I feel the urge</button></div>`).join("");
+}
+function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function savePromise(){
+ const v=document.getElementById("promise").value.trim(); if(!v)return;
+ d.promise=v; save(); toast("Promise saved.");
+}
+function addTemptation(){
+ const x=document.getElementById("custom").value.trim(); if(!x)return;
+ d.temptations.push(x);document.getElementById("custom").value="";save();
+}
+function urge(i){
+ if(!d.promise){toast("Save your promise first.");return}
+ document.getElementById("temptationText").textContent="You are feeling the urge: "+d.temptations[i];
+ document.getElementById("promiseText").textContent="“"+d.promise+"”";
+ document.getElementById("pause").style.display="block";
+ let n=30;document.getElementById("timer").textContent=n;clearInterval(interval);
+ interval=setInterval(()=>{n--;document.getElementById("timer").textContent=n;if(n<=0)clearInterval(interval)},1000);
+}
+function better(){closePause();toast("You chose your promise.")}
+function closePause(){clearInterval(interval);document.getElementById("pause").style.display="none"}
+function toast(t){let x=document.getElementById("toast");x.textContent=t;x.style.display="block";setTimeout(()=>x.style.display="none",2200)}
+async function enableReminder(){
+ d.time=document.getElementById("time").value;save();
+ if("Notification" in window){
+   const p=await Notification.requestPermission();
+   document.getElementById("status").textContent=p==="granted"?"Morning reminder enabled while the app is allowed to run.":"Notification permission was not granted.";
+ }else document.getElementById("status").textContent="Notifications are not supported in this browser.";
+}
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+render();
+</script>
+</body></html>
